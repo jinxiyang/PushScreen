@@ -6,24 +6,36 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.media.MediaCodec;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.yang.pushscreen.utils.SaveDataFile;
+import com.yang.pushscreen.utils.TaskManager;
+
 import static android.app.Activity.RESULT_OK;
 
-public class CaptureScreenService extends Service {
-    public static final int NOTIFICATION_ID = 1;
-    public static final int START_CAPTURE_SCREEN = 0;
-    public static final int STOP_CAPTURE_SCREEN = 1;
 
+public class CaptureScreenService extends Service {
+    private static final String TAG = "PushScreen";
+
+    public static final int EVENT_INVALID = 0;
+    public static final int EVENT_START_CAPTURE_SCREEN = 1;
+    public static final int EVENT_STOP_CAPTURE_SCREEN = 2;
     public static final String KEY_INTENT_DATA = "intent_data";
-    public static final String KEY_CAPTURE_SCREEN = "capture_screen";
-//    private CaptureScreenManager captureScreenManager;
+    public static final String KEY_EVENT = "event";
+
+    private static final int NOTIFICATION_ID = 1;
+
+    private MediaProjection mMediaProjection;
+    private H264VideoEncoder h264VideoEncoder;
+    private PushEncodedData pushEncodedData;
 
     @Nullable
     @Override
@@ -76,32 +88,58 @@ public class CaptureScreenService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        int captureScreen = intent.getIntExtra(KEY_CAPTURE_SCREEN, START_CAPTURE_SCREEN);
-        if (captureScreen == START_CAPTURE_SCREEN){
+        int event = intent.getIntExtra(KEY_EVENT, EVENT_INVALID);
+        if (event == EVENT_START_CAPTURE_SCREEN){
             Intent intentData = intent.getParcelableExtra(KEY_INTENT_DATA);
             startCaptureScreen(intentData);
+            Log.i(TAG, "开启录屏");
+        } else if (event == EVENT_STOP_CAPTURE_SCREEN){
+            stopCaptureScreen();
+            stopForeground(true);
+            Log.i(TAG, "停止录屏");
         }
         return super.onStartCommand(intent, flags, startId);
     }
 
 
-    private void startCaptureScreen(Intent data){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-            MediaProjection mediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
-//            if (mediaProjection != null){
-//                captureScreenManager = new CaptureScreenManager(mediaProjection);
-//                captureScreenManager.start(this);
-//            }
+    private void startCaptureScreen(Intent data) {
+        if (mMediaProjection != null){
+            Log.i(TAG, "已经在录屏");
+            return;
+        }
+        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        mMediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
+        try {
+            MediaCodec mediaCodec = MediaCodecCreator.captureScreen(this, mMediaProjection, false);
+            //启动编码器
+            mediaCodec.start();
+            pushEncodedData = new PushEncodedData();
+            SaveDataFile saveDataFile = new SaveDataFile(getApplicationContext(), "capture_screen", false);
+            pushEncodedData.setSaveData(saveDataFile);
+            h264VideoEncoder = new H264VideoEncoder(mediaCodec, pushEncodedData);
+            TaskManager.getInstance().execute(h264VideoEncoder);
+            return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        Log.i(TAG, "硬件编码器DSP不支持");
+        //硬件编码器DSP不支持，使用软编
+    }
+
+    private void stopCaptureScreen(){
+        if (h264VideoEncoder != null){
+            h264VideoEncoder.close();
+            h264VideoEncoder = null;
+        }
+        if (mMediaProjection != null){
+            mMediaProjection.stop();
+            mMediaProjection = null;
         }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-//        if (captureScreenManager != null){
-//            captureScreenManager.close();
-//            captureScreenManager = null;
-//        }
+        stopCaptureScreen();
     }
 }
