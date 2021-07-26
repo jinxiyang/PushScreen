@@ -6,7 +6,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
-import android.media.MediaCodec;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
@@ -15,9 +14,6 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-
-import com.yang.pushscreen.utils.SaveDataFile;
-import com.yang.pushscreen.utils.TaskManager;
 
 import static android.app.Activity.RESULT_OK;
 
@@ -33,9 +29,8 @@ public class CaptureScreenService extends Service {
 
     private static final int NOTIFICATION_ID = 1;
 
-    private MediaProjection mMediaProjection;
-    private H264VideoEncoder h264VideoEncoder;
-    private PushEncodedData pushEncodedData;
+
+    private PushScreenManager pushScreenManager;
 
     @Nullable
     @Override
@@ -103,37 +98,19 @@ public class CaptureScreenService extends Service {
 
 
     private void startCaptureScreen(Intent data) {
-        if (mMediaProjection != null){
+        if (pushScreenManager != null){
             Log.i(TAG, "已经在录屏");
             return;
         }
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-        mMediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
-        try {
-            MediaCodec mediaCodec = MediaCodecCreator.captureScreen(this, mMediaProjection, false);
-            //启动编码器
-            mediaCodec.start();
-            pushEncodedData = new PushEncodedData();
-            SaveDataFile saveDataFile = new SaveDataFile(getApplicationContext(), "capture_screen", false);
-            pushEncodedData.setSaveData(saveDataFile);
-            h264VideoEncoder = new H264VideoEncoder(mediaCodec, pushEncodedData);
-            TaskManager.getInstance().execute(h264VideoEncoder);
-            return;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        Log.i(TAG, "硬件编码器DSP不支持");
-        //硬件编码器DSP不支持，使用软编
+        MediaProjection mediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
+        pushScreenManager = new PushScreenManager(this, mediaProjection);
     }
 
     private void stopCaptureScreen(){
-        if (h264VideoEncoder != null){
-            h264VideoEncoder.close();
-            h264VideoEncoder = null;
-        }
-        if (mMediaProjection != null){
-            mMediaProjection.stop();
-            mMediaProjection = null;
+        if (pushScreenManager != null){
+            pushScreenManager.stop();
+            pushScreenManager = null;
         }
     }
 
