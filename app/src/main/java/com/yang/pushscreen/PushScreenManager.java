@@ -8,7 +8,7 @@ import android.util.Log;
 import com.yang.pushscreen.utils.SaveDataFile;
 import com.yang.pushscreen.utils.TaskManager;
 
-public class PushScreenManager{
+public class PushScreenManager implements Runnable{
     private static final String TAG = "PushScreen";
 
     private static final String URL = "";
@@ -16,6 +16,8 @@ public class PushScreenManager{
     static {
         System.loadLibrary("native-lib");
     }
+
+    private long mNativePtr;
 
     private Context appContext;
     private MediaProjection mediaProjection;
@@ -26,7 +28,7 @@ public class PushScreenManager{
         if (saveData != null){
             saveData.save(bytes);
         }
-        sendVideoData(bytes, bytes.length, tms);
+        nativeSendVideoData(bytes, bytes.length, tms);
     };
 
     public PushScreenManager(Context context, MediaProjection mediaProjection) {
@@ -35,9 +37,11 @@ public class PushScreenManager{
     }
 
     public void start(){
-        if (!connectUrl(URL)){
-            return;
-        }
+        TaskManager.getInstance().execute(this);
+    }
+
+    @Override
+    public void run() {
         saveData = new SaveDataFile(appContext, "capture_screen", false);
         try {
             MediaCodec mediaCodec = MediaCodecCreator.captureScreen(appContext, mediaProjection, false);
@@ -54,8 +58,8 @@ public class PushScreenManager{
         //TODO
     }
 
-
     public void stop() {
+        disconnectRtmp();
         if (mediaProjection != null){
             mediaProjection.stop();
             mediaProjection = null;
@@ -66,7 +70,20 @@ public class PushScreenManager{
         }
     }
 
-    private native boolean connectUrl(String url);
+    private boolean connectUrl(String url){
+        if (mNativePtr == 0){
+            mNativePtr = nativeConnectUrl(url);
+        }
+        return mNativePtr != 0;
+    }
 
-    private native boolean sendVideoData(byte[] bytes, int len, long tms);
+    private void disconnectRtmp(){
+        nativeDisconnect(mNativePtr);
+    }
+
+    private native long nativeConnectUrl(String url);
+
+    private native void nativeDisconnect(long ptr);
+
+    private native boolean nativeSendVideoData(byte[] bytes, int len, long tms);
 }

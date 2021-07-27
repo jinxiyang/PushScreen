@@ -105,6 +105,7 @@ public class CaptureScreenService extends Service {
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         MediaProjection mediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
         pushScreenManager = new PushScreenManager(this, mediaProjection);
+        pushScreenManager.start();
     }
 
     private void stopCaptureScreen(){
