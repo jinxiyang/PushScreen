@@ -55,7 +55,7 @@ public class H264VideoEncoder implements Runnable{
             //大于2000ms，手动触发
             if (System.currentTimeMillis() - timeStamp >= 2000){
                 Bundle params = new Bundle();
-                //让下一帧是关键帧
+                //让下一帧是I帧
                 params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
                 mediaCodec.setParameters(params);
                 timeStamp = System.currentTimeMillis();
@@ -73,6 +73,7 @@ public class H264VideoEncoder implements Runnable{
                     continue;
                 }
                 if (startTime == 0){
+                    //毫秒
                     startTime = bufferInfo.presentationTimeUs / 1000;
                 }
                 onEncodedDataAvailable(outputBuffer, bufferInfo, bufferInfo.presentationTimeUs / 1000 - startTime);

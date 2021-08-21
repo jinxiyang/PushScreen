@@ -32,6 +32,9 @@ public class CaptureScreenService extends Service {
 
     private PushScreenManager pushScreenManager;
 
+    private Notification foregroundNotification;
+
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -41,11 +44,14 @@ public class CaptureScreenService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Notification foregroundNotification = createForegroundNotification();
+        Notification foregroundNotification = getOrCreateForegroundNotification();
         startForeground(NOTIFICATION_ID, foregroundNotification);
     }
 
-    private Notification createForegroundNotification(){
+    private Notification getOrCreateForegroundNotification(){
+        if (foregroundNotification != null){
+            return foregroundNotification;
+        }
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         // 唯一的通知通道的id.
         String notificationChannelId = "notification_channel_id_01";
@@ -78,13 +84,19 @@ public class CaptureScreenService extends Service {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 1, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(pendingIntent);
         //创建通知并返回
-        return builder.build();
+        foregroundNotification = builder.build();
+        return foregroundNotification;
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null){
+            return super.onStartCommand(intent, flags, startId);
+        }
         int event = intent.getIntExtra(KEY_EVENT, EVENT_INVALID);
         if (event == EVENT_START_CAPTURE_SCREEN){
+            Notification foregroundNotification = getOrCreateForegroundNotification();
+            startForeground(NOTIFICATION_ID, foregroundNotification);
             Intent intentData = intent.getParcelableExtra(KEY_INTENT_DATA);
             startCaptureScreen(intentData);
             Log.i(TAG, "开启录屏");

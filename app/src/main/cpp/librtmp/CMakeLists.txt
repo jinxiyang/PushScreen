@@ -13,4 +13,4 @@ add_library( # Sets the name of the library.
              STATIC
 
              # Provides a relative path to your source file(s).
-             ${rtmp_source)
+             ${rtmp_source})
