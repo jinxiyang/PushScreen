@@ -15,6 +15,8 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.yang.pushscreen.utils.ToastUtils;
+
 import static android.app.Activity.RESULT_OK;
 
 
@@ -29,10 +31,9 @@ public class CaptureScreenService extends Service {
 
     private static final int NOTIFICATION_ID = 1;
 
-
-    private PushScreenManager pushScreenManager;
-
     private Notification foregroundNotification;
+
+    private RtmpPushManager rtmpPushManager;
 
 
     @Nullable
@@ -110,20 +111,30 @@ public class CaptureScreenService extends Service {
 
 
     private void startCaptureScreen(Intent data) {
-        if (pushScreenManager != null){
+        if (rtmpPushManager != null){
             Log.i(TAG, "已经在录屏");
             return;
         }
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         MediaProjection mediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
-        pushScreenManager = new PushScreenManager(this, mediaProjection);
-        pushScreenManager.start();
+        RecordScreen videoSource = new RecordScreen(this, mediaProjection);
+        rtmpPushManager = new RtmpPushManager(videoSource, null, AppConstants.RTMP_URL_BILI);
+        rtmpPushManager.setOnConnectRtmpUrlListener(new OnConnectRtmpUrlListener() {
+            @Override
+            public void onConnectRtmpUrl(boolean success) {
+                ToastUtils.showShort(CaptureScreenService.this, "连接直播服务器：" + success);
+                if (!success){
+                    rtmpPushManager = null;
+                }
+            }
+        });
+        rtmpPushManager.start();
     }
 
     private void stopCaptureScreen(){
-        if (pushScreenManager != null){
-            pushScreenManager.stop();
-            pushScreenManager = null;
+        if (rtmpPushManager != null){
+            rtmpPushManager.stop();
+            rtmpPushManager = null;
         }
     }
 

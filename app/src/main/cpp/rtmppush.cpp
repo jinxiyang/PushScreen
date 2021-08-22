@@ -21,7 +21,7 @@ RTMPPacket *createVideoPacket(PushScreen *screen, int8_t *data, int len, long tm
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_yang_pushscreen_PushScreenManager_nativeConnectUrl(JNIEnv *env, jobject thiz, jstring url) {
+Java_com_yang_pushscreen_RtmpPush_nativeConnectUrl(JNIEnv *env, jclass thiz, jstring url) {
     const char *nUrl = env->GetStringUTFChars(url, 0);
     LOGI("nativeConnectUrl %s", nUrl);
     PushScreen *pushScreen = static_cast<PushScreen *>(malloc(sizeof(PushScreen)));
@@ -64,7 +64,7 @@ Java_com_yang_pushscreen_PushScreenManager_nativeConnectUrl(JNIEnv *env, jobject
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_yang_pushscreen_PushScreenManager_nativeDisconnect(JNIEnv *env, jobject thiz, jlong ptr) {
+Java_com_yang_pushscreen_RtmpPush_nativeDisconnect(JNIEnv *env, jclass thiz, jlong ptr) {
     PushScreen *pushScreen = reinterpret_cast<PushScreen *>(ptr);
     if (pushScreen){
         if (pushScreen->rtmp && RTMP_IsConnected(pushScreen->rtmp)){
@@ -80,49 +80,25 @@ void cacheSpsPps(PushScreen *pushScreen, int8_t *data, int len) {
     LOGI("cacheSpsPps start");
     //sps+pps
     //00 00 00 01 67 42C032DA8110049D9679A80808083C2010A8 00 00 00 01 68 CE 3C 80
-//    for (int i = len - 1; i >= 0; i--) {
-//        if (i - 4 >= 0
-//            && data[i] == 0x68
-//            && data[i - 1] == 0x01
-//            && data[i - 2] == 0x00
-//            && data[i - 3] == 0x00
-//            && data[i - 4] == 0x00) {
-//
-//            //sps
-//            pushScreen->sps_len = i - 4 - 4;
-//            pushScreen->sps = static_cast<int8_t *>(malloc(pushScreen->sps_len));
-//            memcpy(pushScreen->sps, data + 4, pushScreen->sps_len);
-//
-//            //pps
-//            pushScreen->pps_len = len - i;
-//            pushScreen->pps = static_cast<int8_t *>(malloc(pushScreen->pps_len));
-//            memcpy(pushScreen->pps, data + i, pushScreen->pps_len);
-//            break;
-//        }
-//    }
+    for (int i = len - 1; i >= 0; i--) {
+        if (i - 4 >= 0
+            && data[i] == 0x68
+            && data[i - 1] == 0x01
+            && data[i - 2] == 0x00
+            && data[i - 3] == 0x00
+            && data[i - 4] == 0x00) {
 
-    for (int i = 0; i < len; i++) {
-        //0x00 0x00 0x00 0x01
-        if (i + 4 < len) {
-            if (data[i] == 0x00 && data[i + 1] == 0x00
-                && data[i + 2] == 0x00
-                && data[i + 3] == 0x01) {
-                //0x00 0x00 0x00 0x01 7 sps 0x00 0x00 0x00 0x01 8 pps
-                //将sps pps分开
-                //找到pps
-                if (data[i + 4]  == 0x68) {
-                    //去掉界定符
-                    pushScreen->sps_len = i - 4;
-                    pushScreen->sps = static_cast<int8_t *>(malloc(pushScreen->sps_len));
-                    memcpy(pushScreen->sps, data + 4, pushScreen->sps_len);
+            //sps
+            pushScreen->sps_len = i - 4 - 4;
+            pushScreen->sps = static_cast<int8_t *>(malloc(pushScreen->sps_len));
+            memcpy(pushScreen->sps, data + 4, pushScreen->sps_len);
 
-                    pushScreen->pps_len = len - (4 + pushScreen->sps_len) - 4;
-                    pushScreen->pps = static_cast<int8_t *>(malloc(pushScreen->pps_len));
-                    memcpy(pushScreen->pps, data + 4 + pushScreen->sps_len + 4, pushScreen->pps_len);
-                    LOGI("sps:%d pps:%d", pushScreen->sps_len, pushScreen->pps_len);
-                    break;
-                }
-            }
+            //pps
+            pushScreen->pps_len = len - i;
+            pushScreen->pps = static_cast<int8_t *>(malloc(pushScreen->pps_len));
+            memcpy(pushScreen->pps, data + i, pushScreen->pps_len);
+            LOGI("sps:%d pps:%d", pushScreen->sps_len, pushScreen->pps_len);
+            break;
         }
     }
     LOGI("cacheSpsPps end");
@@ -263,9 +239,9 @@ int sendVideoData(PushScreen *pushScreen, int8_t *data, int len, long tms) {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_yang_pushscreen_PushScreenManager_nativeSendVideoData(JNIEnv *env, jobject thiz, jlong ptr,
-                                                               jbyteArray bytes, jint len,
-                                                               jlong tms) {
+Java_com_yang_pushscreen_RtmpPush_nativeSendData(JNIEnv *env, jclass thiz, jlong ptr,
+                                                      jint type, jbyteArray bytes, jint len,
+                                                      jlong tms) {
     PushScreen *pushScreen = reinterpret_cast<PushScreen *>(ptr);
     if (!pushScreen){
         LOGI("nativeSendVideoData ptr is NULL");
@@ -278,4 +254,3 @@ Java_com_yang_pushscreen_PushScreenManager_nativeSendVideoData(JNIEnv *env, jobj
     env->ReleaseByteArrayElements(bytes, videoData, 0);
     return ret;
 }
-

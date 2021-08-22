@@ -8,7 +8,7 @@ import androidx.annotation.NonNull;
 
 import java.nio.ByteBuffer;
 
-public class H264VideoEncoder implements Runnable{
+public class H264VideoEncoder {
 
     //nal类型，第一个字节的低5位，得到nal类型
     //I帧 0x65
@@ -32,7 +32,7 @@ public class H264VideoEncoder implements Runnable{
 
     //是否在每个I帧之前，添加sps、pps信息。
     //如果录屏的数据本地保存为mp4，不需要添加；如果网络实时传输，如直播，需要添加
-    private boolean addSpsPpsBeforeIFrame = true;
+    private boolean addSpsPpsBeforeIFrame;
 
     //保存vps数据，网络传输中放在I帧之前
     private byte[] sps_pps_buf;
@@ -40,13 +40,14 @@ public class H264VideoEncoder implements Runnable{
     //标志是否编码，false结束编码
     private volatile boolean encoding = true;
 
-    public H264VideoEncoder(@NonNull MediaCodec mediaCodec, @NonNull EncodedDataCallback callBack) {
+    public H264VideoEncoder(@NonNull MediaCodec mediaCodec, boolean addSpsPpsBeforeIFrame, @NonNull EncodedDataCallback callBack) {
         this.mediaCodec = mediaCodec;
+        this.addSpsPpsBeforeIFrame = addSpsPpsBeforeIFrame;
         this.callBack = callBack;
     }
 
-    @Override
-    public void run() {
+
+    public void startEncoder() {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         long timeStamp = System.currentTimeMillis();
         long startTime = 0;
@@ -128,10 +129,5 @@ public class H264VideoEncoder implements Runnable{
 
     public void close(){
         encoding = false;
-    }
-
-    //再开始前设置有用
-    public void setAddSpsPpsBeforeIFrame(boolean addSpsPpsBeforeIFrame) {
-        this.addSpsPpsBeforeIFrame = addSpsPpsBeforeIFrame;
     }
 }

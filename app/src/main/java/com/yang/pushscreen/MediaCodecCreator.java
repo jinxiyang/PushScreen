@@ -24,7 +24,7 @@ public class MediaCodecCreator {
      * @return
      * @throws IOException
      */
-    public static @Nullable MediaCodec captureScreen(Context context, @NonNull MediaProjection mediaProjection, boolean h265) throws IOException {
+    public static MediaCodec captureScreen(Context context, @NonNull MediaProjection mediaProjection, boolean h265) throws IOException {
         WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         DisplayMetrics dm = new DisplayMetrics();
         windowManager.getDefaultDisplay().getRealMetrics(dm);

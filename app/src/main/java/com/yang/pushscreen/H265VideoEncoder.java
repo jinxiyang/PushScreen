@@ -2,12 +2,13 @@ package com.yang.pushscreen;
 
 import android.media.MediaCodec;
 import android.os.Build;
+import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 
 import java.nio.ByteBuffer;
 
-public class H265VideoEncoder implements Runnable{
+public class H265VideoEncoder {
 
     //nal类型，取该字节的中间6位，之后右移1位，得到nal类型
     //例如：0x26
@@ -34,7 +35,7 @@ public class H265VideoEncoder implements Runnable{
 
     //是否在每个I帧之前，添加vps、sps、pps信息。
     // 如果录屏的数据本地保存为mp4，不需要添加；如果网络实时传输，如直播，需要添加
-    private boolean addVpsSpsPpsBeforeIFrame = true;
+    private boolean addVpsSpsPpsBeforeIFrame;
 
     //保存vps数据，网络传输中放在I帧之前
     private byte[] vps_sps_pps_buf;
@@ -42,16 +43,27 @@ public class H265VideoEncoder implements Runnable{
     //标志是否编码，false结束编码
     private volatile boolean encoding = true;
 
-    public H265VideoEncoder(@NonNull MediaCodec mediaCodec, @NonNull EncodedDataCallback callBack) {
+    public H265VideoEncoder(@NonNull MediaCodec mediaCodec, boolean addVpsSpsPpsBeforeIFrame, @NonNull EncodedDataCallback callBack) {
         this.mediaCodec = mediaCodec;
+        this.addVpsSpsPpsBeforeIFrame = addVpsSpsPpsBeforeIFrame;
         this.callBack = callBack;
     }
 
-    @Override
-    public void run() {
+    public void startEncoder() {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        long timeStamp = System.currentTimeMillis();
+        long startTime = 0;
         int index;
         while (encoding) {
+            //大于2000ms，手动触发
+            if (System.currentTimeMillis() - timeStamp >= 2000){
+                Bundle params = new Bundle();
+                //让下一帧是I帧
+                params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                mediaCodec.setParameters(params);
+                timeStamp = System.currentTimeMillis();
+            }
+
             index = mediaCodec.dequeueOutputBuffer(bufferInfo, 10_000);
             if (index >= 0) {
                 ByteBuffer outputBuffer;
@@ -63,7 +75,11 @@ public class H265VideoEncoder implements Runnable{
                 if (outputBuffer == null) {
                     continue;
                 }
-                onEncodedDataAvailable(outputBuffer, bufferInfo);
+                if (startTime == 0){
+                    //毫秒
+                    startTime = bufferInfo.presentationTimeUs / 1000;
+                }
+                onEncodedDataAvailable(outputBuffer, bufferInfo, bufferInfo.presentationTimeUs / 1000 - startTime);
                 mediaCodec.releaseOutputBuffer(index, false);
             }
         }
@@ -77,17 +93,17 @@ public class H265VideoEncoder implements Runnable{
         mediaCodec = null;
     }
 
-    private void onEncodedDataAvailable(ByteBuffer outputBuffer, MediaCodec.BufferInfo bufferInfo) {
+    private void onEncodedDataAvailable(ByteBuffer outputBuffer, MediaCodec.BufferInfo bufferInfo, long tms) {
         if (addVpsSpsPpsBeforeIFrame){
-            addVpsSpsPpsBeforeIFrame(outputBuffer, bufferInfo);
+            addVpsSpsPpsBeforeIFrame(outputBuffer, bufferInfo, tms);
         } else {
             byte[] bytes = new byte[bufferInfo.size];
             outputBuffer.get(bytes);
-//            callBack.onEncodedDataAvailable(bytes);
+            callBack.onEncodedDataAvailable(bytes, tms);
         }
     }
 
-    private void addVpsSpsPpsBeforeIFrame(ByteBuffer outputBuffer, MediaCodec.BufferInfo bufferInfo){
+    private void addVpsSpsPpsBeforeIFrame(ByteBuffer outputBuffer, MediaCodec.BufferInfo bufferInfo, long tms){
         if (outputBuffer.get(2) == 0x01) {
             //分割符0x00 00 01
             byteOffset = 3;
@@ -105,20 +121,15 @@ public class H265VideoEncoder implements Runnable{
             final byte[] bytes = new byte[vps_sps_pps_buf.length + bufferInfo.size];
             System.arraycopy(vps_sps_pps_buf, 0, bytes, 0, vps_sps_pps_buf.length);
             outputBuffer.get(bytes, vps_sps_pps_buf.length, bufferInfo.size);
-//            callBack.onEncodedDataAvailable(bytes);
+            callBack.onEncodedDataAvailable(bytes, tms);
         } else {
             byte[] bytes = new byte[bufferInfo.size];
             outputBuffer.get(bytes);
-//            callBack.onEncodedDataAvailable(bytes);
+            callBack.onEncodedDataAvailable(bytes, tms);
         }
     }
 
     public void close(){
         encoding = false;
-    }
-
-    //再开始前设置有用
-    public void setAddVpsSpsPpsBeforeIFrame(boolean addVpsSpsPpsBeforeIFrame) {
-        this.addVpsSpsPpsBeforeIFrame = addVpsSpsPpsBeforeIFrame;
     }
 }
