@@ -7,6 +7,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class H264VideoEncoder {
 
@@ -38,7 +39,7 @@ public class H264VideoEncoder {
     private byte[] sps_pps_buf;
 
     //标志是否编码，false结束编码
-    private volatile boolean encoding = true;
+    private AtomicBoolean encoding = new AtomicBoolean(false);
 
     public H264VideoEncoder(@NonNull MediaCodec mediaCodec, boolean addSpsPpsBeforeIFrame, @NonNull EncodedDataCallback callBack) {
         this.mediaCodec = mediaCodec;
@@ -46,14 +47,15 @@ public class H264VideoEncoder {
         this.callBack = callBack;
     }
 
-
-    public void startEncoder(long s) {
+    public void startEncoder(long startNanoTime) {
+        encoding.set(true);
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-        long timeStamp = System.currentTimeMillis();
-        long startTime = 0;
+//        long timeStamp = System.currentTimeMillis();
+        long startTimeUs = 0;
+        long compensationUs = 0;
         int index;
-        while (encoding) {
-            //大于2000ms，手动触发
+        while (encoding.get()) {
+//            //大于2000ms，手动触发
 //            if (System.currentTimeMillis() - timeStamp >= 2000){
 //                Bundle params = new Bundle();
 //                //让下一帧是I帧
@@ -73,11 +75,11 @@ public class H264VideoEncoder {
                 if (outputBuffer == null) {
                     continue;
                 }
-                if (startTime == 0){
-                    //毫秒
-                    startTime = bufferInfo.presentationTimeUs / 1000;
+                if (startTimeUs == 0){
+                    startTimeUs = bufferInfo.presentationTimeUs;
+                    compensationUs = Math.max((System.nanoTime() - startNanoTime) / 1000, 0);
                 }
-                long tms = bufferInfo.presentationTimeUs / 1000 - startTime;
+                long tms = (bufferInfo.presentationTimeUs - startTimeUs + compensationUs) / 1000;
                 onEncodedDataAvailable(outputBuffer, bufferInfo, tms);
                 mediaCodec.releaseOutputBuffer(index, false);
             }
@@ -129,6 +131,6 @@ public class H264VideoEncoder {
     }
 
     public void close(){
-        encoding = false;
+        encoding.set(false);
     }
 }

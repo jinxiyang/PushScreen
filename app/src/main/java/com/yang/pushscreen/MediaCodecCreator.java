@@ -29,12 +29,9 @@ public class MediaCodecCreator {
         DisplayMetrics dm = new DisplayMetrics();
         windowManager.getDefaultDisplay().getRealMetrics(dm);
         //屏幕的尺寸信息
-//        int screenHeight = dm.heightPixels;
-//        int screenWidth = dm.widthPixels;
-//        int screenDpi = dm.densityDpi;
-        int screenHeight = 720;
-        int screenWidth = 1080;
-        int screenDpi = 1;
+        int screenHeight = dm.heightPixels;
+        int screenWidth = dm.widthPixels;
+        int screenDpi = dm.densityDpi;
 
         //编码格式
         String mimeType;
@@ -49,15 +46,11 @@ public class MediaCodecCreator {
         //设置编码的颜色格式，这里是通过Surface
         mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         //1080P最好在5Mbps/5120Kbps到8Mbps/8192Kbps之间,因为低于5Mbps不够清晰,而大于8Mbps视频文件会过大，比如我们设置8Mbps,则是1024*1024*8
-//        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 1024 * 1024 * 8);
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 1024 * 1024 * 5);
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 1024 * 1024 * 8);
         //帧率
-//        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
+        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 24);
         //关键帧间隔时间，单位为秒，此处的意思是这个视频每两秒一个关键帧
-        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 4);
-//        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
-
+        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
 
         //CQ 对应于 OMX_Video_ControlRateDisable，它表示完全不控制码率，尽最大可能保证图像质量；
         //CBR 对应于 OMX_Video_ControlRateConstant，它表示编码器会尽量把输出码率控制为设定值，即我们前面提到的“不为所动”；
