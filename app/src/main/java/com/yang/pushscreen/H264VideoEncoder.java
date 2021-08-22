@@ -47,20 +47,20 @@ public class H264VideoEncoder {
     }
 
 
-    public void startEncoder() {
+    public void startEncoder(long s) {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         long timeStamp = System.currentTimeMillis();
         long startTime = 0;
         int index;
         while (encoding) {
             //大于2000ms，手动触发
-            if (System.currentTimeMillis() - timeStamp >= 2000){
-                Bundle params = new Bundle();
-                //让下一帧是I帧
-                params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-                mediaCodec.setParameters(params);
-                timeStamp = System.currentTimeMillis();
-            }
+//            if (System.currentTimeMillis() - timeStamp >= 2000){
+//                Bundle params = new Bundle();
+//                //让下一帧是I帧
+//                params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+//                mediaCodec.setParameters(params);
+//                timeStamp = System.currentTimeMillis();
+//            }
 
             index = mediaCodec.dequeueOutputBuffer(bufferInfo, 10_000);
             if (index >= 0) {
@@ -77,7 +77,8 @@ public class H264VideoEncoder {
                     //毫秒
                     startTime = bufferInfo.presentationTimeUs / 1000;
                 }
-                onEncodedDataAvailable(outputBuffer, bufferInfo, bufferInfo.presentationTimeUs / 1000 - startTime);
+                long tms = bufferInfo.presentationTimeUs / 1000 - startTime;
+                onEncodedDataAvailable(outputBuffer, bufferInfo, tms);
                 mediaCodec.releaseOutputBuffer(index, false);
             }
         }

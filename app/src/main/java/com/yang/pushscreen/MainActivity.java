@@ -49,15 +49,15 @@ public class MainActivity extends AppCompatActivity {
     private void startCaptureScreen(Intent data) {
         //录屏在安卓高版本10，需要开启前台service、前台通知
         //Manifest文件需要android:foregroundServiceType="mediaProjection"
-        Intent intent = new Intent(this, CaptureScreenService.class);
-        intent.putExtra(CaptureScreenService.KEY_EVENT, CaptureScreenService.EVENT_START_CAPTURE_SCREEN);
-        intent.putExtra(CaptureScreenService.KEY_INTENT_DATA, data);
+        Intent intent = new Intent(this, RecordScreenService.class);
+        intent.putExtra(RecordScreenService.KEY_EVENT, RecordScreenService.EVENT_START_CAPTURE_SCREEN);
+        intent.putExtra(RecordScreenService.KEY_INTENT_DATA, data);
         startService(intent);
     }
 
     private void stopCaptureScreen(){
-        Intent intent = new Intent(this, CaptureScreenService.class);
-        intent.putExtra(CaptureScreenService.KEY_EVENT, CaptureScreenService.EVENT_STOP_CAPTURE_SCREEN);
+        Intent intent = new Intent(this, RecordScreenService.class);
+        intent.putExtra(RecordScreenService.KEY_EVENT, RecordScreenService.EVENT_STOP_CAPTURE_SCREEN);
         startService(intent);
     }
 }

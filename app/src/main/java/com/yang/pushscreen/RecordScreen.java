@@ -23,11 +23,11 @@ public class RecordScreen implements RtmpPushDataSource{
     }
 
     @Override
-    public void startOutput(RtmpPushQueue queue) {
-        TaskManager.getInstance().execute(() -> startRecord(queue));
+    public void startOutput(RtmpPushQueue queue, long startTimeMillis) {
+        TaskManager.getInstance().execute(() -> startRecord(queue, startTimeMillis));
     }
 
-    private void startRecord(RtmpPushQueue queue){
+    private void startRecord(RtmpPushQueue queue, long startTimeMillis){
         saveData = new SaveDataFile(appContext, "record_screen", false);
         try {
             //视频编码器
@@ -39,7 +39,7 @@ public class RecordScreen implements RtmpPushDataSource{
                     saveData.save(bytes);
                 }
             });
-            videoEncoder.startEncoder();
+            videoEncoder.startEncoder(startTimeMillis);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -49,6 +49,7 @@ public class RecordScreen implements RtmpPushDataSource{
 
 
     private void putPacket(RtmpPushQueue queue, byte[] bytes, long tms){
+        Log.i(TAG, "发送视频：" + "  时间戳：" + tms + "  长度：" + bytes.length);
         RtmpPacket packet = new RtmpPacket(RtmpPacket.RTMP_PACKET_TYPE_VIDEO, bytes, bytes.length, tms);
         queue.putPacket(packet);
     }

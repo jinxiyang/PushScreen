@@ -20,7 +20,7 @@ import com.yang.pushscreen.utils.ToastUtils;
 import static android.app.Activity.RESULT_OK;
 
 
-public class CaptureScreenService extends Service {
+public class RecordScreenService extends Service {
     private static final String TAG = "PushScreen";
 
     public static final int EVENT_INVALID = 0;
@@ -118,11 +118,12 @@ public class CaptureScreenService extends Service {
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         MediaProjection mediaProjection = mediaProjectionManager.getMediaProjection(RESULT_OK, data);
         RecordScreen videoSource = new RecordScreen(this, mediaProjection);
-        rtmpPushManager = new RtmpPushManager(videoSource, null, AppConstants.RTMP_URL_BILI);
+        RecordMicro audioSource = new RecordMicro();
+        rtmpPushManager = new RtmpPushManager(videoSource, audioSource, AppConstants.RTMP_URL_BILI);
         rtmpPushManager.setOnConnectRtmpUrlListener(new OnConnectRtmpUrlListener() {
             @Override
             public void onConnectRtmpUrl(boolean success) {
-                ToastUtils.showShort(CaptureScreenService.this, "连接直播服务器：" + success);
+                ToastUtils.showShort(RecordScreenService.this, "连接直播服务器：" + success);
                 if (!success){
                     rtmpPushManager = null;
                 }

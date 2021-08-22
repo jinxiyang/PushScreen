@@ -237,6 +237,36 @@ int sendVideoData(PushScreen *pushScreen, int8_t *data, int len, long tms) {
     return sendRTMPPacket(pushScreen, packet);
 }
 
+int sendAudioData(PushScreen *pushScreen, int type, int8_t *data, int len, long tms){
+    LOGI("sendAudioData");
+
+    int body_size = len + 2;
+    RTMPPacket *packet = static_cast<RTMPPacket *>(malloc(sizeof(RTMPPacket)));
+    RTMPPacket_Alloc(packet, body_size);
+
+    //音频头
+    packet->m_body[0] = 0xAF;
+    if (type == 1){
+        //头
+        packet->m_body[1] = 0x00;
+    } else {
+        packet->m_body[1] = 0x01;
+    }
+    //数据
+    memcpy(&packet->m_body[2], data, len);
+
+    //packet类型 音频
+    packet->m_packetType = RTMP_PACKET_TYPE_AUDIO;
+    packet->m_nBodySize = body_size;
+    packet->m_nChannel = 0x05;
+    packet->m_nTimeStamp = tms;
+    packet->m_hasAbsTimestamp = 0;
+    packet->m_headerType = RTMP_PACKET_SIZE_LARGE;
+    packet->m_nInfoField2 = pushScreen->rtmp->m_stream_id;
+
+    return sendRTMPPacket(pushScreen, packet);
+}
+
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_yang_pushscreen_RtmpPush_nativeSendData(JNIEnv *env, jclass thiz, jlong ptr,
@@ -247,10 +277,14 @@ Java_com_yang_pushscreen_RtmpPush_nativeSendData(JNIEnv *env, jclass thiz, jlong
         LOGI("nativeSendVideoData ptr is NULL");
         return 0;
     }
-    LOGI("nativeSendVideoData");
+    LOGI("nativeSendData");
     int ret;
-    jbyte *videoData = env->GetByteArrayElements(bytes, NULL);
-    ret = sendVideoData(pushScreen, videoData, len, tms);
-    env->ReleaseByteArrayElements(bytes, videoData, 0);
+    jbyte *data = env->GetByteArrayElements(bytes, NULL);
+    if (type == 0){
+        ret = sendVideoData(pushScreen, data, len, tms);
+    } else {
+        ret = sendAudioData(pushScreen, type, data, len, tms);
+    }
+    env->ReleaseByteArrayElements(bytes, data, 0);
     return ret;
 }

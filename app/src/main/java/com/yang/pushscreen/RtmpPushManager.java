@@ -40,11 +40,12 @@ public class RtmpPushManager {
         }
         onConnectedRtmp(true);
         mPushing = new AtomicBoolean(true);
+        long startTimeMillis = System.currentTimeMillis();
         if (mVideoSource != null){
-            mVideoSource.startOutput(this::putPacket);
+            mVideoSource.startOutput(RtmpPushManager.this::putPacket, startTimeMillis);
         }
         if (mAudioSource != null){
-            mAudioSource.startOutput(this::putPacket);
+            mAudioSource.startOutput(RtmpPushManager.this::putPacket, startTimeMillis);
         }
         while (mPushing.get()){
             RtmpPacket rtmpPacket = null;
